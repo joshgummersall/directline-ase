@@ -1,8 +1,9 @@
 import * as rt from "runtypes";
 import Head from "next/head";
-import React from "react";
+import React, { useMemo } from "react";
 import dynamic from "next/dynamic";
 import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import { DirectLineStreaming } from "botframework-directlinejs";
 
 const Token = rt.Record({
   token: rt.String,
@@ -35,12 +36,24 @@ export const getServerSideProps: GetServerSideProps<{
   }
 };
 
-const WebChat = dynamic(() => import("../components/webChat"), { ssr: false });
+const ReactWebChat = dynamic<any>(() => import("botframework-webchat"), {
+  ssr: false,
+});
 
 export default function Index(
   props: InferGetServerSidePropsType<typeof getServerSideProps>
 ) {
   const { token } = props;
+
+  const directLine = useMemo(
+    () =>
+      new DirectLineStreaming({
+        domain: process.env.NEXT_PUBLIC_DIRECTLINE_URL,
+        token,
+      }),
+    [token]
+  );
+
   if (!token) {
     return null;
   }
@@ -50,7 +63,7 @@ export default function Index(
       <Head>
         <title>Webchat Directline ASE</title>
       </Head>
-      <WebChat domain={process.env.NEXT_PUBLIC_DIRECTLINE_URL} token={token} />
+      <ReactWebChat directLine={directLine} />;
     </>
   );
 }
