@@ -1,6 +1,6 @@
 import * as rt from "runtypes";
 import Head from "next/head";
-import React, { useMemo } from "react";
+import React, { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import { DirectLineStreaming } from "botframework-directlinejs";
@@ -15,7 +15,7 @@ export const getServerSideProps: GetServerSideProps<{
 }> = async () => {
   try {
     const resp = await fetch(
-      `${process.env.NEXT_PUBLIC_DIRECTLINE_URL}/tokens/generate`,
+      `${process.env.BOT_URL}/.bot/v3/directline/tokens/generate`,
       {
         method: "POST",
         headers: {
@@ -45,14 +45,17 @@ export default function Index(
 ) {
   const { token } = props;
 
-  const directLine = useMemo(
-    () =>
-      new DirectLineStreaming({
-        domain: process.env.NEXT_PUBLIC_DIRECTLINE_URL,
-        token,
-      }),
-    [token]
-  );
+  const [directLine, setDirectLine] = useState(null);
+  useEffect(() => {
+    if (token) {
+      setDirectLine(
+        new DirectLineStreaming({
+          domain: `${location.protocol}//${location.hostname}/.bot/v3/directline`,
+          token,
+        })
+      );
+    }
+  }, [setDirectLine]);
 
   if (!token) {
     return null;
