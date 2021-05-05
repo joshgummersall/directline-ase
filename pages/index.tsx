@@ -6,21 +6,19 @@ import { DirectLineStreaming } from "botframework-directlinejs";
 import { Formik } from "formik";
 import { State } from "../components/state";
 
+import Alert from "react-bootstrap/Alert";
 import Button from "react-bootstrap/Button";
-import Form from "react-bootstrap/Form";
 import Col from "react-bootstrap/Col";
 import Container from "react-bootstrap/Container";
+import Form from "react-bootstrap/Form";
 import Modal from "react-bootstrap/Modal";
 import Nav from "react-bootstrap/Nav";
 import Navbar from "react-bootstrap/Navbar";
 import Row from "react-bootstrap/Row";
+import Toast from "react-bootstrap/Toast";
 
 const ReactWebChat = dynamic<any>(() => import("botframework-webchat"), {
   ssr: false,
-});
-
-const Token = rt.Record({
-  token: rt.String,
 });
 
 const Status = rt.Record({
@@ -40,31 +38,39 @@ const Configure: React.FC<{
   const onSubmit = useCallback(
     (values, formik) => {
       setState(values);
-
-      setTimeout(() => {
-        formik.setSubmitting(false);
-        onHide();
-      }, 1000);
+      formik.setSubmitting(false);
+      onHide();
     },
-    [setState, onHide]
+    [setState]
   );
 
+  const [error, setError] = useState<string | undefined>();
+  const onDismiss = useCallback(() => setError(undefined), [setError]);
+
   const [status, setStatus] = useState<rt.Static<typeof Status> | undefined>();
+
   const onStatus = useCallback(
     async (botUrl: string) => {
-      if (!botUrl) {
-        return;
-      }
+      try {
+        if (!botUrl) {
+          return setError("Bot URL is required");
+        }
 
-      setStatus(undefined);
+        setStatus(undefined);
+        setError(undefined);
 
-      const resp = await fetch(`${botUrl}/.bot`);
+        const resp = await fetch(`${botUrl}/.bot`);
 
-      if (resp.ok) {
+        if (!resp.ok) {
+          return setError(await resp.text());
+        }
+
         setStatus(Status.check(await resp.json()));
+      } catch (err) {
+        setError(err.message);
       }
     },
-    [setStatus]
+    [setStatus, setError]
   );
 
   return (
@@ -83,6 +89,13 @@ const Configure: React.FC<{
               <Modal.Title>Configure Bot</Modal.Title>
             </Modal.Header>
             <Modal.Body>
+              {error && (
+                <Form.Group>
+                  <Alert variant="danger" dismissible onClose={onDismiss}>
+                    {error}
+                  </Alert>
+                </Form.Group>
+              )}
               <Form.Group>
                 <Form.Label>Bot URL</Form.Label>
                 <Form.Control
@@ -148,6 +161,17 @@ const Configure: React.FC<{
   );
 };
 
+const Token = rt.Record({
+  token: rt.String,
+});
+
+const TokenError = rt.Record({
+  error: rt.Record({
+    code: rt.String,
+    message: rt.String,
+  }),
+});
+
 export default function Index() {
   const [state] = useContext(State);
 
@@ -158,51 +182,75 @@ export default function Index() {
   const onShow = useCallback(() => setShow(true), [setShow]);
   const onHide = useCallback(() => setShow(false), [setShow]);
 
+  const [toast, setToast] = useState<
+    Record<"header" | "body", string> | undefined
+  >();
+
+  const onDismiss = useCallback(() => setToast(undefined), [setToast]);
   const [directLine, setDirectLine] = useState<DirectLineStreaming>();
 
   useEffect(() => {
     const ac = new AbortController();
 
     (async () => {
-      if (!state.botUrl) {
-        return;
-      }
+      try {
+        setToast(undefined);
 
-      if (!state.directLineSecret) {
-        return;
-      }
-
-      const resp = await fetch(
-        `${state.botUrl}/.bot/v3/directline/tokens/generate`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${state.directLineSecret}`,
-          },
-          signal: ac.signal,
+        if (!state.botUrl || !state.directLineSecret) {
+          return;
         }
-      );
 
-      if (ac.signal.aborted) {
-        return;
+        if (!state.directLineSecret) {
+          return;
+        }
+
+        const resp = await fetch(
+          `${state.botUrl}/.bot/v3/directline/tokens/generate`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${state.directLineSecret}`,
+            },
+            signal: ac.signal,
+          }
+        );
+
+        if (ac.signal.aborted) {
+          return setToast({
+            header: "Uh oh!",
+            body: "fetch signal aborted",
+          });
+        }
+
+        if (!resp.ok) {
+          const {
+            error: { code, message },
+          } = TokenError.check(await resp.json());
+
+          return setToast({
+            header: "Unable to fetch token",
+            body: `Received ${code} (${message})`,
+          });
+        }
+
+        const { token } = Token.check(await resp.json());
+
+        setDirectLine(
+          new DirectLineStreaming({
+            domain: `${state.botUrl}/.bot/v3/directline`,
+            token,
+          })
+        );
+      } catch (err) {
+        return setToast({
+          header: "Unknown error",
+          body: err.message,
+        });
       }
-
-      if (!resp.ok) {
-        return;
-      }
-
-      const { token } = Token.check(await resp.json());
-
-      setDirectLine(
-        new DirectLineStreaming({
-          domain: `${state.botUrl}/.bot/v3/directline`,
-          token,
-        })
-      );
     })();
 
     return () => ac.abort();
-  }, [setDirectLine, state.botUrl, state.directLineSecret]);
+  }, [setToast, setDirectLine, state.botUrl, state.directLineSecret]);
 
   return (
     <>
@@ -210,6 +258,19 @@ export default function Index() {
         <title>Webchat Directline ASE</title>
       </Head>
       <Navbar bg="light" expand="lg" fixed="top">
+        {toast && (
+          <Toast
+            show
+            onClose={onDismiss}
+            className="position-absolute"
+            style={{ top: 0, right: 0 }}
+          >
+            <Toast.Header>
+              <strong className="mr-auto">{toast.header}</strong>
+            </Toast.Header>
+            <Toast.Body>{toast.body}</Toast.Body>
+          </Toast>
+        )}
         <Container>
           <Navbar.Brand>Webchat Debugger</Navbar.Brand>
           <Navbar.Toggle aria-controls="navbar-nav" />
