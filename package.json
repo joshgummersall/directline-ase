@@ -1,5 +1,5 @@
 {
-  "name": "dl-ase",
+  "name": "dl-ase-debugger",
   "private": true,
   "scripts": {
     "dev": "next dev",
