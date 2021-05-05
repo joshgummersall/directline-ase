@@ -44,6 +44,7 @@ const Configure: React.FC<{
     [setState]
   );
 
+  const [fetching, setFetching] = useState(false);
   const [error, setError] = useState<string | undefined>();
   const onDismiss = useCallback(() => setError(undefined), [setError]);
 
@@ -57,20 +58,22 @@ const Configure: React.FC<{
         }
 
         setStatus(undefined);
-        setError(undefined);
 
+        setFetching(true);
         const resp = await fetch(`${botUrl}/.bot`);
+        setFetching(false);
 
         if (!resp.ok) {
           return setError(await resp.text());
         }
 
+        setError(undefined);
         setStatus(Status.check(await resp.json()));
       } catch (err) {
         setError(err.message);
       }
     },
-    [setStatus, setError]
+    [setStatus, setFetching, setError]
   );
 
   return (
@@ -145,8 +148,9 @@ const Configure: React.FC<{
             </Modal.Body>
             <Modal.Footer>
               <Button
-                variant="secondary"
+                disabled={fetching}
                 onClick={() => onStatus(values.botUrl)}
+                variant="secondary"
               >
                 Fetch status
               </Button>
