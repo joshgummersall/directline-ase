@@ -128,7 +128,7 @@ const Configure: React.FC<{
               </Form.Group>
               {status && (
                 <Form.Group>
-                  <Form.Label>Status</Form.Label>
+                  <Form.Label>.bot response</Form.Label>
                   <div>
                     <pre>{JSON.stringify(status, null, 2)}</pre>
                   </div>
@@ -152,7 +152,7 @@ const Configure: React.FC<{
                 onClick={() => onStatus(values.botUrl)}
                 variant="secondary"
               >
-                Fetch status
+                Fetch .bot
               </Button>
               <Button type="submit" disabled={isSubmitting}>
                 Save changes
