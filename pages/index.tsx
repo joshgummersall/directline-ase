@@ -53,15 +53,15 @@ const Configure: React.FC<{
   const onStatus = useCallback(
     async (botUrl: string) => {
       try {
+        setFetching(true);
+
         if (!botUrl) {
           return setError("Bot URL is required");
         }
 
         setStatus(undefined);
 
-        setFetching(true);
         const resp = await fetch(`${botUrl}/.bot`);
-        setFetching(false);
 
         if (!resp.ok) {
           return setError(await resp.text());
@@ -71,6 +71,8 @@ const Configure: React.FC<{
         setStatus(Status.check(await resp.json()));
       } catch (err) {
         setError(err.message);
+      } finally {
+        setFetching(false);
       }
     },
     [setStatus, setFetching, setError]
