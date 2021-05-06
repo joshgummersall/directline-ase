@@ -276,7 +276,7 @@ export default function Index() {
           </Toast>
         )}
         <Container>
-          <Navbar.Brand>Webchat Debugger</Navbar.Brand>
+          <Navbar.Brand>DL ASE Webchat</Navbar.Brand>
           <Navbar.Toggle aria-controls="navbar-nav" />
           <Navbar.Collapse id="navbar-nav">
             <Nav className="mr-auto">
