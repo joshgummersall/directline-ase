@@ -4,7 +4,7 @@ import React, { useCallback, useContext, useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { DirectLineStreaming } from "botframework-directlinejs";
 import { Formik } from "formik";
-import { State } from "../components/state";
+import { State, StateT } from "../components/state";
 
 import Alert from "react-bootstrap/Alert";
 import Button from "react-bootstrap/Button";
@@ -38,6 +38,7 @@ const Configure: React.FC<{
   const onSubmit = useCallback(
     (values, formik) => {
       setState(values);
+      location.hash = btoa(JSON.stringify(values));
       formik.setSubmitting(false);
       onHide();
     },
@@ -79,7 +80,7 @@ const Configure: React.FC<{
   );
 
   return (
-    <Formik initialValues={state} onSubmit={onSubmit}>
+    <Formik enableReinitialize initialValues={state} onSubmit={onSubmit}>
       {({
         handleBlur,
         handleChange,
@@ -125,7 +126,9 @@ const Configure: React.FC<{
                 />
                 <Form.Text className="text-muted">
                   The Directline Secret can be found in the Bot Channel Channels
-                  blade. This is never saved and is used only to fetch a token.
+                  blade. This will be serialized into &apos;location.hash&apos;
+                  to support reloading the page, but is never saved or
+                  transmitted.
                 </Form.Text>
               </Form.Group>
               {status && (
@@ -179,11 +182,26 @@ const TokenError = rt.Record({
 });
 
 export default function Index() {
-  const [state] = useContext(State);
+  const [state, setState] = useContext(State);
 
   const [show, setShow] = useState<boolean>(
     !state.botUrl || !state.directLineSecret
   );
+
+  useEffect(() => {
+    if (location.hash) {
+      try {
+        const state = StateT.check(JSON.parse(atob(location.hash.slice(1))));
+
+        setState(state);
+        if (state.botUrl && state.directLineSecret) {
+          setShow(false);
+        }
+      } catch (_err) {
+        console.log(_err);
+      }
+    }
+  }, [setState, setShow]);
 
   const onShow = useCallback(() => setShow(true), [setShow]);
   const onHide = useCallback(() => setShow(false), [setShow]);
@@ -290,7 +308,7 @@ export default function Index() {
       <Container className="h-100">
         <Row className="h-100">
           <Col xs={12}>
-            {directLine && <ReactWebChat directLine={directLine} />}
+            {directLine && <ReactWebChat className="directline-rwc" directLine={directLine} />}
           </Col>
         </Row>
       </Container>
