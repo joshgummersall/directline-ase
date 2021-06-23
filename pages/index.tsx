@@ -34,15 +34,18 @@ const Configure: React.FC<{
   show: boolean;
 }> = ({ show, onHide }) => {
   const [state, setState] = useContext(State);
+  const [persist, setPersist] = useState(true);
 
   const onSubmit = useCallback(
     (values, formik) => {
       setState(values);
-      location.hash = btoa(JSON.stringify(values));
+      if (persist) {
+        location.hash = btoa(JSON.stringify(values));
+      }
       formik.setSubmitting(false);
       onHide();
     },
-    [setState]
+    [setState, persist]
   );
 
   const [fetching, setFetching] = useState(false);
@@ -126,10 +129,26 @@ const Configure: React.FC<{
                 />
                 <Form.Text className="text-muted">
                   The Directline Secret can be found in the Bot Channel Channels
-                  blade. This will be serialized into &apos;location.hash&apos;
-                  to support reloading the page, but is never saved or
-                  transmitted.
+                  blade.
                 </Form.Text>
+              </Form.Group>
+              <Form.Group controlId="location-hash">
+                <Form.Check
+                  label="Persist configuration"
+                  name="persistConfiguration"
+                  onChange={() => setPersist((persist) => !persist)}
+                  type="checkbox"
+                  checked={persist}
+                />
+                {persist && (
+                  <Form.Text className="text-muted">
+                    The Bot URL and Directline Secret will be persisted in
+                    &apos;location.hash&apos;. This enables you to easily
+                    refresh the page and continue interacting with your bot.
+                    This is never transmitted to the server and never leaves
+                    your browser.
+                  </Form.Text>
+                )}
               </Form.Group>
               {status && (
                 <Form.Group>
@@ -308,7 +327,12 @@ export default function Index() {
       <Container className="h-100">
         <Row className="h-100">
           <Col xs={12}>
-            {directLine && <ReactWebChat className="directline-rwc" directLine={directLine} />}
+            {directLine && (
+              <ReactWebChat
+                className="directline-rwc"
+                directLine={directLine}
+              />
+            )}
           </Col>
         </Row>
       </Container>
